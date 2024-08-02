@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kayıt ol</title>
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'radio/css/style.css' %}">
+</head>
+<body>
+    <div class="container">
+        <h1>Kayıt</h1>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Kayıt</button>
+        </form>
+    </div>
+</body>
+</html>

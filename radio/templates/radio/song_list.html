@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Song List</title>
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'radio/css/style.css' %}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-left">
+            </div>
+            <div class="navbar-right">
+                {% if user.is_authenticated %}
+                    <span>{{ user.username }}</span>
+                    <a href="{% url 'logout' %}">Çıkış</a>
+                {% else %}
+                    <a href="{% url 'login' %}">Giriş</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+    <div class="container">
+        <h1>Dgn Radyo</h1>
+        {% if user.is_authenticated %}
+            <ul id="songList" style="display: none;">
+                {% for song in songs %}
+                    <li data-url="{{ song.audio_file.url }}" data-id="{{ song.id }}">
+                        {{ song.title }} - {{ song.artist }}
+                    </li>
+                {% endfor %}
+                {% for announcement in announcements %}
+                    <li data-url="{{ announcement.audio_file.url }}" data-id="announcement-{{ announcement.id }}">
+                        {{ announcement.title }}
+                    </li>
+                {% endfor %}
+            </ul>
+            <button onclick="playSongs()">Başlat</button>
+            <button onclick="stopSongs()">Durdur</button>
+            <audio id="audioPlayer" controls>
+                Your browser does not support the audio element.
+            </audio>
+            <p id="currentSongInfo"></p>
+        {% else %}
+            <p>You need to <a href="{% url 'login' %}">login</a> to play songs.</p>
+        {% endif %}
+    </div>
+    <input type="hidden" id="csrfToken" value="{{ csrf_token }}">
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var audioPlayer = document.getElementById("audioPlayer");
+            var songList = document.getElementById("songList").getElementsByTagName("li");
+            var currentSongIndex = 0;
+            var csrfToken = document.getElementById("csrfToken").value;
+            var isStopped = false;
+
+            function playNextSong() {
+                if (isStopped) return;
+                if (currentSongIndex < songList.length) {
+                    var nextItem = songList[currentSongIndex];
+                    var isAnnouncement = nextItem.getAttribute("data-id").startsWith("announcement");
+                    audioPlayer.src = nextItem.getAttribute("data-url");
+                    updateCurrentSong(nextItem.getAttribute("data-id"), isAnnouncement);
+                    audioPlayer.play();
+                    currentSongIndex++;
+                } else {
+                    currentSongIndex = 0;
+                    playNextSong();
+                }
+            }
+
+            function updateCurrentSong(itemId, isAnnouncement) {
+                var url = isAnnouncement ? "" : "/update_current_song/" + itemId + "/";
+                var currentTime = audioPlayer.currentTime;
+                var duration = audioPlayer.duration;
+                document.getElementById("currentSongInfo").innerText = `Playing: ${itemId} | Current Time: ${currentTime} | Duration: ${duration}`;
+
+                if (!isAnnouncement) {
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({ current_time: currentTime, duration: duration })
+                    });
+                }
+            }
+
+            audioPlayer.addEventListener("ended", playNextSong);
+
+            window.playSongs = function() {
+                isStopped = false;
+                playNextSong();
+            }
+
+            window.stopSongs = function() {
+                isStopped = true;
+                audioPlayer.pause();
+                audioPlayer.src = "";
+                currentSongIndex = 0;
+            }
+        });
+    </script>
+</body>
+</html>

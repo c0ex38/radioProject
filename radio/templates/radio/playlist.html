@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Playlist</title>
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'radio/css/style.css' %}">
+</head>
+<body>
+    <div class="container">
+        <h1>Playlist</h1>
+        <audio id="audioPlayer" controls autoplay>
+            Your browser does not support the audio element.
+        </audio>
+        <ul id="songList" style="display: none;">
+            {% for song in songs %}
+                <li data-url="{{ song.audio_file.url }}" data-id="{{ song.id }}">{{ song.title }} - {{ song.artist }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    <input type="hidden" id="csrfToken" value="{{ csrf_token }}">
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var audioPlayer = document.getElementById("audioPlayer");
+            var songList = document.getElementById("songList").getElementsByTagName("li");
+            var currentSongIndex = 0;
+            var csrfToken = document.getElementById("csrfToken").value;
+
+            function playNextSong() {
+                if (currentSongIndex < songList.length) {
+                    var nextSong = songList[currentSongIndex];
+                    audioPlayer.src = nextSong.getAttribute("data-url");
+                    updateCurrentSong(nextSong.getAttribute("data-id"));
+                    audioPlayer.play();
+                    currentSongIndex++;
+                } else {
+                    currentSongIndex = 0;
+                    playNextSong();
+                }
+            }
+
+            function updateCurrentSong(songId) {
+                fetch(`/update_current_song/${songId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({})
+                });
+            }
+
+            audioPlayer.addEventListener("ended", playNextSong);
+
+            playNextSong(); // Play the first song
+        });
+    </script>
+</body>
+</html>
